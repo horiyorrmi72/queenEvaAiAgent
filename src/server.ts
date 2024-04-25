@@ -3,19 +3,19 @@ import { RawData, WebSocket } from "ws";
 import { createServer, Server as HTTPServer } from "http";
 import cors from "cors";
 import expressWs from "express-ws";
+import { TwilioClient } from "./twilio_api";
 import { Retell } from "retell-sdk";
-import { RegisterCallResponse } from "retell-sdk/resources/call";
+import { CallResponse, RegisterCallResponse } from "retell-sdk/resources/call";
 import { CustomLlmRequest, CustomLlmResponse } from "./types";
 // import { FunctionCallingLlmClient } from "./llms/llm_azure_openai_func_call_end_call";
 import { FunctionCallingLlmClient } from "./llms/llm_azure_openai_func_call";
 import { DemoLlmClient } from "./llms/llm_azure_openai";
 
-
 export class Server {
   private httpServer: HTTPServer;
   public app: expressWs.Application;
   private retellClient: Retell;
-  
+  private twilioClient: TwilioClient;
 
   constructor() {
     this.app = expressWs(express()).app;
@@ -26,11 +26,14 @@ export class Server {
 
     this.handleRetellLlmWebSocket();
     this.handleRegisterCallAPI();
+    this.makeOutboundCalls();
+
 
     this.retellClient = new Retell({
       apiKey: process.env.RETELL_API_KEY,
     });
-
+    this.twilioClient = new TwilioClient(this.retellClient);
+    this.twilioClient.ListenTwilioVoiceWebhook(this.app);
   }
 
   listen(port: number): void {
@@ -61,7 +64,7 @@ export class Server {
           // Send an error response back to the client
           res.status(500).json({ error: "Failed to register call" });
         }
-      },
+      }
     );
   }
 
@@ -132,7 +135,30 @@ export class Server {
           console.error("Encountered erorr:", err);
           ws.close(1005, "Encountered erorr: " + err);
         }
-      },
+      }
     );
   }
+
+  makeOutboundCalls() {
+    this.app.post('/make-outbound-call', async (req: Request, res: Response) => {
+      const { to } = req.body;
+      try {
+        if (!(to)) {
+          return res.status(400).json({ msg: "called party can not be empty!" });
+        }
+        const calls = await this.retellClient.call.create({
+          from_number: process.env.PHONE_NUMBER,
+          to_number: to,
+          override_agent_id: process.env.agentId
+        });
+        return res.status(201).json({ msg: "call initiated successfully!", calls })
+
+      }
+      catch (error) {
+        console.log('Error making outbound call:', error);
+        return res.status(500).json({ msg: "err making call", error })
+      }
+    });
+  }
+
 }

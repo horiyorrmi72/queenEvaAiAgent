@@ -22,7 +22,7 @@ export class TwilioClient {
     try {
       const localNumber = await this.twilio
         .availablePhoneNumbers("US")
-        .local.list({ areaCode: areaCode, limit: 1 });
+        .local.list({ areaCode: 456, limit: 1 });
       if (!localNumber || localNumber[0] == null)
         throw "No phone numbers of this area code.";
 
@@ -68,9 +68,10 @@ export class TwilioClient {
 
   // Create an outbound call
   CreatePhoneCall = async (
-    fromNumber: string,
-    toNumber: string,
-    agentId: string,
+    req:Request,
+    fromNumber: string = process.env.TWILIO_PHONE_NUMBER,
+    toNumber: string = req.body.toNumber,
+    agentId: string = process.env.agentId,
   ) => {
     try {
       await this.twilio.calls.create({
