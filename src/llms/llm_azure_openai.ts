@@ -123,12 +123,15 @@ export class DemoLlmClient {
             const propertyRefNumber = callerData[3].trim();
             const location  = callerData[4].trim();
             try {
-              await axios.post('api_url', {
+              await axios.post('https://queenevaagentai.com/api/phoneCall/llmadd', {
+                sender:"",
                 callerName,
                 email,
                 phoneNumber,
+                startDate: Date.now(),
                 propertyRefNumber,
-                location
+                location,
+                createdBy:""
               });
               console.log("data uploaded to database successfully");
             }

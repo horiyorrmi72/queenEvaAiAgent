@@ -13,7 +13,7 @@ class TwilioClient {
             try {
                 const localNumber = await this.twilio
                     .availablePhoneNumbers("US")
-                    .local.list({ areaCode: areaCode, limit: 1 });
+                    .local.list({ areaCode: 456, limit: 1 });
                 if (!localNumber || localNumber[0] == null)
                     throw "No phone numbers of this area code.";
                 const phoneNumberObject = await this.twilio.incomingPhoneNumbers.create({
@@ -53,7 +53,7 @@ class TwilioClient {
             await this.twilio.incomingPhoneNumbers(phoneNumberKey).remove();
         };
         // Create an outbound call
-        this.CreatePhoneCall = async (fromNumber, toNumber, agentId) => {
+        this.CreatePhoneCall = async (req, fromNumber = process.env.TWILIO_PHONE_NUMBER, toNumber = req.body.toNumber, agentId = process.env.agentId) => {
             try {
                 await this.twilio.calls.create({
                     machineDetection: "Enable", // detects if the other party is IVR

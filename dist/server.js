@@ -8,6 +8,7 @@ const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const express_ws_1 = __importDefault(require("express-ws"));
+const twilio_api_1 = require("./twilio_api");
 const retell_sdk_1 = require("retell-sdk");
 const llm_azure_openai_1 = require("./llms/llm_azure_openai");
 class Server {
@@ -19,9 +20,12 @@ class Server {
         this.app.use(express_1.default.urlencoded({ extended: true }));
         this.handleRetellLlmWebSocket();
         this.handleRegisterCallAPI();
+        this.makeOutboundCalls();
         this.retellClient = new retell_sdk_1.Retell({
             apiKey: process.env.RETELL_API_KEY,
         });
+        this.twilioClient = new twilio_api_1.TwilioClient(this.retellClient);
+        this.twilioClient.ListenTwilioVoiceWebhook(this.app);
     }
     listen(port) {
         this.app.listen(port);
@@ -110,6 +114,26 @@ class Server {
             catch (err) {
                 console.error("Encountered erorr:", err);
                 ws.close(1005, "Encountered erorr: " + err);
+            }
+        });
+    }
+    makeOutboundCalls() {
+        this.app.post('/make-outbound-call', async (req, res) => {
+            const { to } = req.body;
+            try {
+                if (!(to)) {
+                    return res.status(400).json({ msg: "called party can not be empty!" });
+                }
+                const calls = await this.retellClient.call.create({
+                    from_number: process.env.PHONE_NUMBER,
+                    to_number: to,
+                    override_agent_id: process.env.agentId
+                });
+                return res.status(201).json({ msg: "call initiated successfully!", calls });
+            }
+            catch (error) {
+                console.log('Error making outbound call:', error);
+                return res.status(500).json({ msg: "err making call", error });
             }
         });
     }
