@@ -19,7 +19,7 @@ const agentPrompt = `Task: As a customer service agent at our Dubai real estate 
     -if no, ask the following questions,
       1- what is the community of the property you are interested in?
       2- what is the property type?
-      3- is the property for sale or rent?
+      3- how soon is it needed?
       4- how many bedroom is the property?
       5- what was the pricing of the property?
       6- ask for a prefarred time for a meeting with our real estate agent.
