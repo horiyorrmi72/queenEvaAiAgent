@@ -91,7 +91,7 @@ export class Server {
           ws.send(JSON.stringify(config));
 
           // Start sending the begin message to signal the client is ready.
-          const llmClient = new DemoLlmClient();
+          const llmClient = new FunctionCallingLlmClient();
           llmClient.BeginMessage(ws);
 
           ws.on("error", (err) => {

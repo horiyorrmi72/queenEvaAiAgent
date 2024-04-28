@@ -10,7 +10,8 @@ const cors_1 = __importDefault(require("cors"));
 const express_ws_1 = __importDefault(require("express-ws"));
 const twilio_api_1 = require("./twilio_api");
 const retell_sdk_1 = require("retell-sdk");
-const llm_azure_openai_1 = require("./llms/llm_azure_openai");
+// import { FunctionCallingLlmClient } from "./llms/llm_azure_openai_func_call_end_call";
+const llm_azure_openai_func_call_1 = require("./llms/llm_azure_openai_func_call");
 class Server {
     constructor() {
         this.app = (0, express_ws_1.default)((0, express_1.default)()).app;
@@ -72,7 +73,7 @@ class Server {
                 };
                 ws.send(JSON.stringify(config));
                 // Start sending the begin message to signal the client is ready.
-                const llmClient = new llm_azure_openai_1.DemoLlmClient();
+                const llmClient = new llm_azure_openai_func_call_1.FunctionCallingLlmClient();
                 llmClient.BeginMessage(ws);
                 ws.on("error", (err) => {
                     console.error("Error received in LLM websocket client: ", err);

@@ -3,6 +3,7 @@ import {
   AzureKeyCredential,
   ChatRequestMessage,
   GetChatCompletionsOptions,
+  ChatCompletionsFunctionToolDefinition
 } from "@azure/openai";
 import { WebSocket } from "ws";
 import {
@@ -12,7 +13,6 @@ import {
   ResponseRequiredRequest,
   Utterance,
 } from "../types";
-import axios from "axios";
 
 const beginSentence =
   "Hi this is Eva Real Estate, how may I help?";
@@ -29,6 +29,7 @@ const agentPrompt =
 6- ask for a prefarred time for a meeting with our real estate agent.
 
 Act friendly and professional.Maintain client confidentiality.Keep records.Aim for concise, clear communication.Empathize while maintaining professionalism.You also adhere to all safety protocols and maintain strict client confidentiality.Additionally, you contribute to the practice's overall success by completing related tasks as needed.\n\nConversational Style: Communicate concisely and conversationally. Aim for responses in short, clear prose, ideally under 10 words. This succinct approach helps in maintaining clarity and focus during clients interactions.\n\nPersonality: Your approach should be empathetic and understanding, balancing compassion with maintaining a professional stance on what is best for the clients. It's important to listen actively and empathize without overly agreeing with the clients, ensuring that your professional opinion guides the real estate process.`;
+;
 
 export class DemoLlmClient {
   private client: OpenAIClient;
@@ -118,38 +119,6 @@ export class DemoLlmClient {
             end_call: false,
           };
           ws.send(JSON.stringify(res));
-
-          // extracting caller details
-
-          const callerDetails = request.transcript.filter((utterance) => {
-            utterance.role === 'user' && utterance.content !== "";
-          });
-
-          // save callerDetails to db
-          if (callerDetails.length > 0) {
-            const callerData = callerDetails[0].content.split(",");
-            const callerName = callerData[0].trim();
-            const email = callerData[1].trim();
-            const phoneNumber = callerData[2].trim();
-            const propertyRefNumber = callerData[3].trim();
-            const location  = callerData[4].trim();
-            try {
-              await axios.post('https://queenevaagentai.com/api/phoneCall/llmadd', {
-                sender:"",
-                callerName,
-                email,
-                phoneNumber,
-                startDate: Date.now(),
-                propertyRefNumber,
-                location,
-                createdBy:""
-              });
-              console.log("data uploaded to database successfully");
-            }
-            catch (error) {
-              console.log("error saving data to db", error);
-            }
-          }
         }
       }
     } catch (err) {

@@ -6,13 +6,9 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DemoLlmClient = void 0;
 const openai_1 = require("@azure/openai");
-const axios_1 = __importDefault(require("axios"));
 const beginSentence = "Hi this is Eva Real Estate, how may I help?";
 const agentPrompt = `Task: As a customer service agent at our Dubai real estate agency, your focus is on building strong client relationships. Gather caller details statte that you will be collecting data needed, then you ask the following questions in sequence, don't skip question, and only ask upto one question in response.
 1 - do you have a reference number for the listing you are intrested in?
@@ -26,6 +22,7 @@ const agentPrompt = `Task: As a customer service agent at our Dubai real estate 
 6- ask for a prefarred time for a meeting with our real estate agent.
 
 Act friendly and professional.Maintain client confidentiality.Keep records.Aim for concise, clear communication.Empathize while maintaining professionalism.You also adhere to all safety protocols and maintain strict client confidentiality.Additionally, you contribute to the practice's overall success by completing related tasks as needed.\n\nConversational Style: Communicate concisely and conversationally. Aim for responses in short, clear prose, ideally under 10 words. This succinct approach helps in maintaining clarity and focus during clients interactions.\n\nPersonality: Your approach should be empathetic and understanding, balancing compassion with maintaining a professional stance on what is best for the clients. It's important to listen actively and empathize without overly agreeing with the clients, ensuring that your professional opinion guides the real estate process.`;
+;
 class DemoLlmClient {
     constructor() {
         this.client = new openai_1.OpenAIClient(process.env.AZURE_OPENAI_ENDPOINT, new openai_1.AzureKeyCredential(process.env.AZURE_OPENAI_KEY));
@@ -98,35 +95,6 @@ class DemoLlmClient {
                             end_call: false,
                         };
                         ws.send(JSON.stringify(res));
-                        // extracting caller details
-                        const callerDetails = request.transcript.filter((utterance) => {
-                            utterance.role === 'user' && utterance.content !== "";
-                        });
-                        // save callerDetails to db
-                        if (callerDetails.length > 0) {
-                            const callerData = callerDetails[0].content.split(",");
-                            const callerName = callerData[0].trim();
-                            const email = callerData[1].trim();
-                            const phoneNumber = callerData[2].trim();
-                            const propertyRefNumber = callerData[3].trim();
-                            const location = callerData[4].trim();
-                            try {
-                                await axios_1.default.post('https://queenevaagentai.com/api/phoneCall/llmadd', {
-                                    sender: "",
-                                    callerName,
-                                    email,
-                                    phoneNumber,
-                                    startDate: Date.now(),
-                                    propertyRefNumber,
-                                    location,
-                                    createdBy: ""
-                                });
-                                console.log("data uploaded to database successfully");
-                            }
-                            catch (error) {
-                                console.log("error saving data to db", error);
-                            }
-                        }
                     }
                 }
             }

@@ -6,11 +6,29 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FunctionCallingLlmClient = void 0;
 const openai_1 = require("@azure/openai");
+const axios_1 = __importDefault(require("axios"));
 const beginSentence = "Hi this is Eva Real Estate, how may I help?";
-const agentPrompt = "Task: As a professional real estate agency in dubai, your responsibilities are comprehensive and client-centered. You establish a positive and trusting rapport with clients, Act in  a friendly manor. Your role involves getting the user details such as caller name,caller email, phone number, property reference number the client is calling for and the location, get to know if clients is calling for sales inquiry of property or rent inquiry saving this data to the database and creating tailored advise plans based on individual clients needs and circumstances check for availability of needs from database. Regular meetings with clients are essential for providing counseling and guidance, and for adjusting plans as needed. You conduct ongoing assessments to monitor client needs, involve and advise clients when  appropriate, and refer client to other agents for physical meeting if required. Keeping thorough records of client interactions and progress is crucial. You also adhere to all safety protocols and maintain strict client confidentiality. Additionally, you contribute to the practice's overall success by completing related tasks as needed.\n\nConversational Style: Communicate concisely and conversationally. Aim for responses in short, clear prose, ideally under 10 words. This succinct approach helps in maintaining clarity and focus during clients interactions.\n\nPersonality: Your approach should be empathetic and understanding, balancing compassion with maintaining a professional stance on what is best for the clients. It's important to listen actively and empathize without overly agreeing with the clients, ensuring that your professional opinion guides the real estate process.";
+const agentPrompt = `Task: As a customer service agent at our Dubai real estate agency, your focus is on building strong client relationships. Gather caller details following the state below in sequence, don't skip question, and only ask upto one question in response.
+    1 - do you have a reference number for the listing you are intrested in?
+    -if no, ask the following questions,
+      1- what is the community of the property you are interested in?
+      2- what is the property type?
+      3- is the property for sale or rent?
+      4- how many bedroom is the property?
+      5- what was the pricing of the property?
+      6- ask for a prefarred time for a meeting with our real estate agent.
+    -if yes, ask get the following data from the caller in sequence:
+        -{{ caller_name }},
+        -{{ phone_number }},
+        -preferable {{time}} and {{date}} for a meeting with our real estate agent.
+
+Act friendly and professional.Maintain client confidentiality.Keep records.Aim for concise, clear communication.Empathize while maintaining professionalism.You also adhere to all safety protocols and maintain strict client confidentiality.Additionally, you contribute to the practice's overall success by completing related tasks as needed.\n\nConversational Style: Communicate concisely and conversationally. Aim for responses in short, clear prose, ideally under 10 words. This succinct approach helps in maintaining clarity and focus during clients interactions.\n\nPersonality: Your approach should be empathetic and understanding, balancing compassion with maintaining a professional stance on what is best for the clients. It's important to listen actively and empathize without overly agreeing with the clients, ensuring that your professional opinion guides the real estate process.`;
 class FunctionCallingLlmClient {
     constructor() {
         this.client = new openai_1.OpenAIClient(process.env.AZURE_OPENAI_ENDPOINT, new openai_1.AzureKeyCredential(process.env.AZURE_OPENAI_KEY));
@@ -96,6 +114,48 @@ class FunctionCallingLlmClient {
                                 type: "string",
                                 description: "The message you will say before ending the call with the customer.",
                             },
+                        },
+                        required: ["message"],
+                    },
+                },
+            },
+            //function to add data to crm lead
+            {
+                type: "function",
+                function: {
+                    name: "add_lead",
+                    description: "gets caller data such as name, email, reference number for the listing, community and so on then add it to database .",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            caller_name: {
+                                type: "string",
+                                description: "The name of the caller",
+                            },
+                            caller_email: {
+                                type: "string",
+                                description: "The email of the caller",
+                            },
+                            phone_number: {
+                                type: "string",
+                                description: "The phone number of the caller",
+                            },
+                            property_reference_number: {
+                                type: "string",
+                                description: "The reference number of the property e.g A1124fr if no reference number available  use 0000 or null to replace the refernce number",
+                            },
+                            message: {
+                                type: "string",
+                                description: "The message you will say while setting up the appointment like 'one moment'",
+                            },
+                            date: {
+                                type: "string",
+                                description: "The date of appointment to make in forms of year-month-day.",
+                            },
+                            time: {
+                                type: "string",
+                                description: "The time of appointment to make in forms of hour:minute. e.g. 12:30 PM.",
+                            }
                         },
                         required: ["message"],
                     },
@@ -201,6 +261,17 @@ class FunctionCallingLlmClient {
         finally {
             if (funcCall != null) {
                 // Step 5: Call the functions
+                if (funcCall.funcName === "add_lead") {
+                    funcCall.arguments = JSON.parse(funcArguments);
+                    const res = {
+                        response_type: "response",
+                        response_id: request.response_id,
+                        content: funcCall.arguments.message,
+                        content_complete: true, //test to see if the call ends with a good message after sending the data to the endpoint
+                        end_call: false,
+                    };
+                    ws.send(JSON.stringify(res));
+                }
                 // If it's to end the call, simply send a last message and end the call
                 if (funcCall.funcName === "end_call") {
                     funcCall.arguments = JSON.parse(funcArguments);
@@ -247,3 +318,25 @@ class FunctionCallingLlmClient {
     }
 }
 exports.FunctionCallingLlmClient = FunctionCallingLlmClient;
+const add_lead = async function (caller_name, caller_email, phone_number, property_reference_number, date, time) {
+    try {
+        if (!phone_number) {
+            return "Please provide a valid phone number";
+        }
+        await axios_1.default.post("https://queenevaagentai.com/api/phoneCall/llmadd", {
+            "caller_name": caller_name,
+            "caller_email": caller_email,
+            "phone_number": phone_number,
+            "property_reference_number": property_reference_number,
+            "date": date,
+            "time": time
+        });
+        return "success";
+    }
+    catch (error) {
+        if (error) {
+            console.log(error);
+            return "error";
+        }
+    }
+};
